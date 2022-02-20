@@ -71,3 +71,57 @@ resource "google_compute_backend_service" "backend" {
     group = google_compute_region_network_endpoint_group.endpoint[each.key].id
    }
 }  
+
+resource "google_compute_url_map" "default" {
+  for_each = var.cloudrun_services
+  name     = each.key
+  default_service = google_compute_backend_service.backend[each.key].id
+}
+
+
+resource "google_compute_target_http_proxy" "default" {
+  for_each = var.cloudrun_services
+  name     = each.key
+  url_map = google_compute_url_map.default[each.key].id
+}
+
+resource "google_compute_global_forwarding_rule" "http" {
+  for_each = var.cloudrun_services
+  name     = each.key
+
+  target     = google_compute_target_http_proxy.default[each.key].id
+  port_range = "80"
+}
+
+# HTTPS proxy when ssl is true
+
+
+// resource "google_compute_ssl_certificate" "default" {
+//   for_each = var.cloudrun_services
+//   name     = each.key
+//   private_key = each.value.ssl.private_key
+//   certificate = each.value.ssl.certificate
+
+//   lifecycle {
+//     create_before_destroy = true
+//   }
+// }
+
+
+// resource "google_compute_target_https_proxy" "default" {
+//   for_each = var.cloudrun_services
+//   name     = each.key
+  
+//   url_map = google_compute_url_map.default[each.key].id
+
+//   ssl_certificates = google_compute_ssl_certificate.default[each.key].id
+//   ssl_policy       = var.ssl_policy
+// }
+
+// resource "google_compute_global_forwarding_rule" "https" {
+//   for_each = var.cloudrun_services
+//   name     = each.key
+//   target     = google_compute_target_https_proxy.default[each.key].id
+//   port_range = "443"
+// }
+
